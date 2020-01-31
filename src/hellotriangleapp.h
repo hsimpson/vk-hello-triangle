@@ -153,7 +153,7 @@ class HelloTriangleApp {
   void recreateSwapChain();
   void cleanupSwapChain();
 
-  const std::vector<Vertex> vertices = {
+  const std::vector<Vertex> _vertices = {
       {{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},   // 1st Vertex
       {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},    // 2nd Vertex
       {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}};  // 3rd Vertex
@@ -163,4 +163,8 @@ class HelloTriangleApp {
 
   uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
   void     createVertexBuffer();
+  void     createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties,
+                        VkBuffer& buffer, VkDeviceMemory& bufferMemory);
+
+  void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
 };
