@@ -1,6 +1,6 @@
 BasedOnStyle: Google
 IndentWidth: 2
-ColumnLimit: 120
+ColumnLimit: 0
 AllowShortBlocksOnASingleLine: false
 AllowShortFunctionsOnASingleLine: false
 AlignConsecutiveAssignments: true
@@ -18,3 +18,4 @@ BraceWrapping:
   BeforeElse: false
   IndentBraces: false
 BreakBeforeBraces: Custom
+#SpaceBeforeParens: Always

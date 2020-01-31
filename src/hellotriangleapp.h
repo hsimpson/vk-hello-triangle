@@ -48,6 +48,23 @@ class HelloTriangleApp {
   const std::vector<const char*> _validationLayers = {"VK_LAYER_KHRONOS_validation"};
   const std::vector<const char*> _deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 
+  VkRenderPass     _renderPass;
+  VkPipelineLayout _pipelineLayout;
+  VkPipeline       _graphicsPipeline;
+
+  std::vector<VkFramebuffer> _swapChainFramebuffers;
+
+  VkCommandPool                _commandPool;
+  std::vector<VkCommandBuffer> _commandBuffers;
+
+  std::vector<VkSemaphore> _imageAvailableSemaphores;
+  std::vector<VkSemaphore> _renderFinishedSemaphores;
+  std::vector<VkFence>     _inFlightFences;
+  std::vector<VkFence>     _imagesInFlight;
+
+  const int MAX_FRAMES_IN_FLIGHT = 2;
+  size_t    currentFrame         = 0;
+
 #ifdef NDEBUG
   bool _enableValidationLayers = false;
 #else
@@ -84,6 +101,16 @@ class HelloTriangleApp {
   VkExtent2D              chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
 
   void createSwapChain();
-
   void createImageViews();
+
+  VkShaderModule createShaderModule(const std::vector<char>& code);
+  void           createRenderPass();
+  void           createGraphicsPipeline();
+
+  void createFramebuffers();
+  void createCommandPool();
+  void createCommandBuffers();
+
+  void createSyncObjects();
+  void drawFrame();
 };

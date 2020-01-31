@@ -1,6 +1,7 @@
 {
   "editor.formatOnSave": true,
-  "[cpp]": {
-    "editor.defaultFormatter": "xaver.clang-format"
+  "files.associations": {
+    ".clang-format": "yaml",
   },
+  "glsllint.glslangValidatorArgs": "-V -o ./.tmp/tmp.spv",
 }
