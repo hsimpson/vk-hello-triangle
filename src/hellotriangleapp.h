@@ -154,15 +154,21 @@ class HelloTriangleApp {
   void cleanupSwapChain();
 
   const std::vector<Vertex> _vertices = {
-      {{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},   // 1st Vertex
-      {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},    // 2nd Vertex
-      {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}};  // 3rd Vertex
+      {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},  // V1
+      {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},   // V2
+      {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},    // V3
+      {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}};  // V4
+
+  const std::vector<uint16_t> _indices = {0, 1, 2, 2, 3, 0};
 
   VkBuffer       _vertexBuffer;
   VkDeviceMemory _vertexBufferMemory;
+  VkBuffer       _indexBuffer;
+  VkDeviceMemory _indexBufferMemory;
 
   uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
   void     createVertexBuffer();
+  void     createIndexBuffer();
   void     createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties,
                         VkBuffer& buffer, VkDeviceMemory& bufferMemory);
 
