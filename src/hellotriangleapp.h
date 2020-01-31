@@ -65,11 +65,15 @@ class HelloTriangleApp {
   const int MAX_FRAMES_IN_FLIGHT = 2;
   size_t    currentFrame         = 0;
 
+  bool _framebufferResized = false;
+
 #ifdef NDEBUG
   bool _enableValidationLayers = false;
 #else
   bool _enableValidationLayers = true;
 #endif
+
+  static void framebufferResizeCallback(GLFWwindow* window, int width, int height);
 
   void initWindow();
   void initVulkan();
@@ -113,4 +117,7 @@ class HelloTriangleApp {
 
   void createSyncObjects();
   void drawFrame();
+
+  void recreateSwapChain();
+  void cleanupSwapChain();
 };
