@@ -53,6 +53,12 @@ struct Vertex {
   }
 };
 
+struct UniformBufferObject {
+  alignas(16) glm::mat4 model;
+  alignas(16) glm::mat4 view;
+  alignas(16) glm::mat4 proj;
+};
+
 class HelloTriangleApp {
  public:
   void run();
@@ -80,9 +86,10 @@ class HelloTriangleApp {
   const std::vector<const char*> _validationLayers = {"VK_LAYER_KHRONOS_validation"};
   const std::vector<const char*> _deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 
-  VkRenderPass     _renderPass;
-  VkPipelineLayout _pipelineLayout;
-  VkPipeline       _graphicsPipeline;
+  VkRenderPass          _renderPass;
+  VkDescriptorSetLayout _descriptorSetLayout;
+  VkPipelineLayout      _pipelineLayout;
+  VkPipeline            _graphicsPipeline;
 
   std::vector<VkFramebuffer> _swapChainFramebuffers;
 
@@ -173,4 +180,17 @@ class HelloTriangleApp {
                         VkBuffer& buffer, VkDeviceMemory& bufferMemory);
 
   void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
+
+  void createDescriptorSetLayout();
+
+  std::vector<VkBuffer>       _uniformBuffers;
+  std::vector<VkDeviceMemory> _uniformBuffersMemory;
+
+  void createUniformBuffers();
+  void updateUniformBuffer(uint32_t currentImage);
+  void createDescriptorPool();
+  void createDescriptorSets();
+
+  VkDescriptorPool             _descriptorPool;
+  std::vector<VkDescriptorSet> _descriptorSets;
 };
