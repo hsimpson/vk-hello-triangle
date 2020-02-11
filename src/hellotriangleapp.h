@@ -26,6 +26,7 @@ struct SwapChainSupportDetails {
 struct Vertex {
   glm::vec2 pos;
   glm::vec3 color;
+  glm::vec2 texCoord;
 
   static VkVertexInputBindingDescription getBindingDescription() {
     VkVertexInputBindingDescription bindingDescription = {};
@@ -36,8 +37,8 @@ struct Vertex {
     return bindingDescription;
   }
 
-  static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions() {
-    std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions = {};
+  static std::array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions() {
+    std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions = {};
 
     attributeDescriptions[0].binding  = 0;
     attributeDescriptions[0].location = 0;
@@ -48,6 +49,11 @@ struct Vertex {
     attributeDescriptions[1].location = 1;
     attributeDescriptions[1].format   = VK_FORMAT_R32G32B32_SFLOAT;
     attributeDescriptions[1].offset   = offsetof(Vertex, color);
+
+    attributeDescriptions[2].binding  = 0;
+    attributeDescriptions[2].location = 2;
+    attributeDescriptions[2].format   = VK_FORMAT_R32G32_SFLOAT;
+    attributeDescriptions[2].offset   = offsetof(Vertex, texCoord);
 
     return attributeDescriptions;
   }
@@ -161,10 +167,10 @@ class HelloTriangleApp {
   void cleanupSwapChain();
 
   const std::vector<Vertex> _vertices = {
-      {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},  // V1
-      {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},   // V2
-      {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},    // V3
-      {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}};  // V4
+      {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},  // V1
+      {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},   // V2
+      {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},    // V3
+      {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}};  // V4
 
   const std::vector<uint16_t> _indices = {0, 1, 2, 2, 3, 0};
 
@@ -193,4 +199,25 @@ class HelloTriangleApp {
 
   VkDescriptorPool             _descriptorPool;
   std::vector<VkDescriptorSet> _descriptorSets;
+
+  void createTextureImage();
+
+  VkImage        _textureImage;
+  VkDeviceMemory _textureImageMemory;
+  void           createImage(uint32_t width, uint32_t height, VkFormat format,
+                             VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties,
+                             VkImage& image, VkDeviceMemory& imageMemory);
+
+  VkCommandBuffer beginSingleTimeCommands();
+  void            endSingleTimeCommands(VkCommandBuffer commandBuffer);
+
+  void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
+  void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
+
+  VkImageView _textureImageView;
+
+  void        createTextureImageView();
+  VkImageView createImageView(VkImage image, VkFormat format);
+  void        createTextureSampler();
+  VkSampler   _textureSampler;
 };
