@@ -1,16 +1,14 @@
 ﻿#include "./hellotriangleapp.h"
 
 #include <algorithm>
+#include <chrono>
 #include <fstream>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 #include <iostream>
 #include <set>
 #include <stdexcept>
 #include <vector>
-
-#define GLM_FORCE_RADIANS
-#include <chrono>
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "./stb_image.h"
@@ -86,8 +84,9 @@ void HelloTriangleApp::initVulkan() {
   createRenderPass();
   createDescriptorSetLayout();
   createGraphicsPipeline();
-  createFramebuffers();
   createCommandPool();
+  createDepthResources();
+  createFramebuffers();
   createTextureImage();
   createTextureImageView();
   createTextureSampler();
@@ -528,6 +527,7 @@ void HelloTriangleApp::recreateSwapChain() {
   createImageViews();
   createRenderPass();
   createGraphicsPipeline();
+  createDepthResources();
   createFramebuffers();
   createUniformBuffers();
   createDescriptorPool();
@@ -536,6 +536,10 @@ void HelloTriangleApp::recreateSwapChain() {
 }
 
 void HelloTriangleApp::cleanupSwapChain() {
+  vkDestroyImageView(_device, _depthImageView, nullptr);
+  vkDestroyImage(_device, _depthImage, nullptr);
+  vkFreeMemory(_device, _depthImageMemory, nullptr);
+
   for (auto framebuffer : _swapChainFramebuffers) {
     vkDestroyFramebuffer(_device, framebuffer, nullptr);
   }
@@ -618,7 +622,7 @@ void HelloTriangleApp::createImageViews() {
   _swapChainImageViews.resize(_swapChainImages.size());
 
   for (size_t i = 0; i < _swapChainImages.size(); i++) {
-    _swapChainImageViews[i] = createImageView(_swapChainImages[i], _swapChainImageFormat);
+    _swapChainImageViews[i] = createImageView(_swapChainImages[i], _swapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
   }
 }
 
@@ -633,14 +637,29 @@ void HelloTriangleApp::createRenderPass() {
   colorAttachment.initialLayout           = VK_IMAGE_LAYOUT_UNDEFINED;
   colorAttachment.finalLayout             = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
+  VkAttachmentDescription depthAttachment = {};
+  depthAttachment.format                  = findDepthFormat();
+  depthAttachment.samples                 = VK_SAMPLE_COUNT_1_BIT;
+  depthAttachment.loadOp                  = VK_ATTACHMENT_LOAD_OP_CLEAR;
+  depthAttachment.storeOp                 = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+  depthAttachment.stencilLoadOp           = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+  depthAttachment.stencilStoreOp          = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+  depthAttachment.initialLayout           = VK_IMAGE_LAYOUT_UNDEFINED;
+  depthAttachment.finalLayout             = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
   VkAttachmentReference colorAttachmentRef = {};
   colorAttachmentRef.attachment            = 0;
   colorAttachmentRef.layout                = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-  VkSubpassDescription subpass = {};
-  subpass.pipelineBindPoint    = VK_PIPELINE_BIND_POINT_GRAPHICS;
-  subpass.colorAttachmentCount = 1;
-  subpass.pColorAttachments    = &colorAttachmentRef;
+  VkAttachmentReference depthAttachmentRef = {};
+  depthAttachmentRef.attachment            = 1;
+  depthAttachmentRef.layout                = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+  VkSubpassDescription subpass    = {};
+  subpass.pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS;
+  subpass.colorAttachmentCount    = 1;
+  subpass.pColorAttachments       = &colorAttachmentRef;
+  subpass.pDepthStencilAttachment = &depthAttachmentRef;
 
   VkSubpassDependency dependency = {};
   dependency.srcSubpass          = VK_SUBPASS_EXTERNAL;
@@ -650,14 +669,15 @@ void HelloTriangleApp::createRenderPass() {
   dependency.dstStageMask        = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
   dependency.dstAccessMask       = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
-  VkRenderPassCreateInfo renderPassInfo = {};
-  renderPassInfo.sType                  = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-  renderPassInfo.attachmentCount        = 1;
-  renderPassInfo.pAttachments           = &colorAttachment;
-  renderPassInfo.subpassCount           = 1;
-  renderPassInfo.pSubpasses             = &subpass;
-  renderPassInfo.dependencyCount        = 1;
-  renderPassInfo.pDependencies          = &dependency;
+  std::array<VkAttachmentDescription, 2> attachments    = {colorAttachment, depthAttachment};
+  VkRenderPassCreateInfo                 renderPassInfo = {};
+  renderPassInfo.sType                                  = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+  renderPassInfo.attachmentCount                        = static_cast<uint32_t>(attachments.size());
+  renderPassInfo.pAttachments                           = attachments.data();
+  renderPassInfo.subpassCount                           = 1;
+  renderPassInfo.pSubpasses                             = &subpass;
+  renderPassInfo.dependencyCount                        = 1;
+  renderPassInfo.pDependencies                          = &dependency;
 
   if (vkCreateRenderPass(_device, &renderPassInfo, nullptr, &_renderPass) != VK_SUCCESS) {
     throw std::runtime_error("failed to create render pass!");
@@ -737,6 +757,18 @@ void HelloTriangleApp::createGraphicsPipeline() {
   multisampling.sampleShadingEnable                  = VK_FALSE;
   multisampling.rasterizationSamples                 = VK_SAMPLE_COUNT_1_BIT;
 
+  VkPipelineDepthStencilStateCreateInfo depthStencil = {};
+  depthStencil.sType                                 = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+  depthStencil.depthTestEnable                       = VK_TRUE;
+  depthStencil.depthWriteEnable                      = VK_TRUE;
+  depthStencil.depthCompareOp                        = VK_COMPARE_OP_LESS;
+  depthStencil.depthBoundsTestEnable                 = VK_FALSE;
+  depthStencil.minDepthBounds                        = 0.0f;  // Optional
+  depthStencil.maxDepthBounds                        = 1.0f;  // Optional
+  depthStencil.stencilTestEnable                     = VK_FALSE;
+  depthStencil.front                                 = {};  // Optional
+  depthStencil.back                                  = {};  // Optional
+
   VkPipelineColorBlendAttachmentState colorBlendAttachment = {};
   colorBlendAttachment.colorWriteMask =
       VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
@@ -776,6 +808,7 @@ void HelloTriangleApp::createGraphicsPipeline() {
   pipelineInfo.renderPass                   = _renderPass;
   pipelineInfo.subpass                      = 0;
   pipelineInfo.basePipelineHandle           = VK_NULL_HANDLE;
+  pipelineInfo.pDepthStencilState           = &depthStencil;
 
   if (vkCreateGraphicsPipelines(_device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &_graphicsPipeline) != VK_SUCCESS) {
     throw std::runtime_error("failed to create graphics pipeline!");
@@ -802,13 +835,13 @@ VkShaderModule HelloTriangleApp::createShaderModule(const std::vector<char>& cod
 void HelloTriangleApp::createFramebuffers() {
   _swapChainFramebuffers.resize(_swapChainImageViews.size());
   for (size_t i = 0; i < _swapChainImageViews.size(); i++) {
-    VkImageView attachments[] = {_swapChainImageViews[i]};
+    std::array<VkImageView, 2> attachments = {_swapChainImageViews[i], _depthImageView};
 
     VkFramebufferCreateInfo framebufferInfo = {};
     framebufferInfo.sType                   = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
     framebufferInfo.renderPass              = _renderPass;
-    framebufferInfo.attachmentCount         = 1;
-    framebufferInfo.pAttachments            = attachments;
+    framebufferInfo.attachmentCount         = static_cast<uint32_t>(attachments.size());
+    framebufferInfo.pAttachments            = attachments.data();
     framebufferInfo.width                   = _swapChainExtent.width;
     framebufferInfo.height                  = _swapChainExtent.height;
     framebufferInfo.layers                  = 1;
@@ -862,9 +895,12 @@ void HelloTriangleApp::createCommandBuffers() {
     renderPassInfo.renderArea.offset     = {0, 0};
     renderPassInfo.renderArea.extent     = _swapChainExtent;
 
-    VkClearValue clearColor        = {0.0f, 0.0f, 0.0f, 1.0f};
-    renderPassInfo.clearValueCount = 1;
-    renderPassInfo.pClearValues    = &clearColor;
+    std::array<VkClearValue, 2> clearValues = {};
+    clearValues[0].color                    = {0.0f, 0.0f, 0.0f, 1.0f};
+    clearValues[1].depthStencil             = {1.0f, 0};
+
+    renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+    renderPassInfo.pClearValues    = clearValues.data();
 
     vkCmdBeginRenderPass(_commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
@@ -1376,16 +1412,16 @@ void HelloTriangleApp::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_
 }
 
 void HelloTriangleApp::createTextureImageView() {
-  _textureImageView = createImageView(_textureImage, VK_FORMAT_R8G8B8A8_SRGB);
+  _textureImageView = createImageView(_textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
 }
 
-VkImageView HelloTriangleApp::createImageView(VkImage image, VkFormat format) {
+VkImageView HelloTriangleApp::createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags) {
   VkImageViewCreateInfo viewInfo           = {};
   viewInfo.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
   viewInfo.image                           = image;
   viewInfo.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
   viewInfo.format                          = format;
-  viewInfo.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+  viewInfo.subresourceRange.aspectMask     = aspectFlags;
   viewInfo.subresourceRange.baseMipLevel   = 0;
   viewInfo.subresourceRange.levelCount     = 1;
   viewInfo.subresourceRange.baseArrayLayer = 0;
@@ -1421,4 +1457,38 @@ void HelloTriangleApp::createTextureSampler() {
   if (vkCreateSampler(_device, &samplerInfo, nullptr, &_textureSampler) != VK_SUCCESS) {
     throw std::runtime_error("failed to create texture sampler!");
   }
+}
+
+void HelloTriangleApp::createDepthResources() {
+  VkFormat depthFormat = findDepthFormat();
+
+  createImage(_swapChainExtent.width, _swapChainExtent.height, depthFormat, VK_IMAGE_TILING_OPTIMAL,
+              VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+              VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, _depthImage, _depthImageMemory);
+  _depthImageView = createImageView(_depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
+}
+
+VkFormat HelloTriangleApp::findSupportedFormat(const std::vector<VkFormat>& candidates,
+                                               VkImageTiling tiling, VkFormatFeatureFlags features) {
+  for (VkFormat format : candidates) {
+    VkFormatProperties props;
+    vkGetPhysicalDeviceFormatProperties(_physicalDevice, format, &props);
+    if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features) {
+      return format;
+    } else if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features) {
+      return format;
+    }
+  }
+  throw std::runtime_error("failed to find supported format!");
+}
+
+VkFormat HelloTriangleApp::findDepthFormat() {
+  return findSupportedFormat(
+      {VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT},
+      VK_IMAGE_TILING_OPTIMAL,
+      VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
+}
+
+bool HelloTriangleApp::hasStencilComponent(VkFormat format) {
+  return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
 }
