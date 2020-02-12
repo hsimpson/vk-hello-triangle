@@ -130,7 +130,7 @@ class HelloTriangleApp {
   std::vector<VkFence>     _imagesInFlight;
 
   const int MAX_FRAMES_IN_FLIGHT = 2;
-  size_t    currentFrame         = 0;
+  size_t    _currentFrame        = 0;
 
   bool _framebufferResized = false;
 
@@ -238,22 +238,23 @@ class HelloTriangleApp {
 
   void createTextureImage();
 
+  uint32_t       _mipLevels;
   VkImage        _textureImage;
   VkDeviceMemory _textureImageMemory;
-  void           createImage(uint32_t width, uint32_t height, VkFormat format,
+  void           createImage(uint32_t width, uint32_t height, uint32_t mipLevels, VkFormat format,
                              VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties,
                              VkImage& image, VkDeviceMemory& imageMemory);
 
   VkCommandBuffer beginSingleTimeCommands();
   void            endSingleTimeCommands(VkCommandBuffer commandBuffer);
 
-  void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
+  void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t mipLevels);
   void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
 
   VkImageView _textureImageView;
 
   void        createTextureImageView();
-  VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
+  VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, uint32_t mipLevels);
   void        createTextureSampler();
   VkSampler   _textureSampler;
 
@@ -270,15 +271,22 @@ class HelloTriangleApp {
   Author: artfletch
   License: CC Attribution
   */
-  const std::string MODEL_PATH   = "models/drinking-fountain-barratt-gardens/DrinkingFountainBarrattGardens01.obj";
-  const std::string TEXTURE_PATH = "models/drinking-fountain-barratt-gardens/DrinkingFountainBarrattGardens_2m_8k_01_u1_v1.jpg";
+  const std::string MODEL_PATH       = "models/drinking-fountain-barratt-gardens/DrinkingFountainBarrattGardens01.obj";
+  const std::string TEXTURE_PATH     = "models/drinking-fountain-barratt-gardens/DrinkingFountainBarrattGardens_2m_8k_01_u1_v1.jpg";
+  glm::vec3         _viewTranslation = glm::vec3(0.0f, 50.0f, 20.0f);
 
+  /*
+  const std::string MODEL_PATH       = "models/the-parade-armour-of-king-erik-xiv-of-sweden/180212_Erik_XIV_Rustning_2.obj";
+  const std::string TEXTURE_PATH     = "models/the-parade-armour-of-king-erik-xiv-of-sweden/180212_Erik_XIV_Rustning_2_u1_v1.png";
+  glm::vec3         _viewTranslation = glm::vec3(0.0f, 50.0f, 50.0f);
+  */
   void loadModel();
 
-  glm::vec3 _viewTranslation = glm::vec3(0.0f, 50.0f, 20.0f);
   glm::mat4 updateViewMatrix();
 
   // glfw call backs
   static void framebufferResizeCallback(GLFWwindow* window, int width, int height);
   static void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
+
+  void generateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels);
 };
