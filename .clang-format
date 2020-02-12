@@ -19,3 +19,4 @@ BraceWrapping:
   IndentBraces: false
 BreakBeforeBraces: Custom
 #SpaceBeforeParens: Always
+SortIncludes: false

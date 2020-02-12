@@ -5,8 +5,12 @@
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include <array>
 #include <glm/glm.hpp>
+
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/hash.hpp>
+
+#include <array>
 #include <optional>
 #include <vector>
 
@@ -29,6 +33,10 @@ struct Vertex {
   glm::vec3 pos;
   glm::vec3 color;
   glm::vec2 texCoord;
+
+  bool operator==(const Vertex& other) const {
+    return pos == other.pos && color == other.color && texCoord == other.texCoord;
+  }
 
   static VkVertexInputBindingDescription getBindingDescription() {
     VkVertexInputBindingDescription bindingDescription = {};
@@ -60,6 +68,18 @@ struct Vertex {
     return attributeDescriptions;
   }
 };
+
+namespace std {
+template <>
+struct hash<Vertex> {
+  size_t operator()(Vertex const& vertex) const {
+    return ((hash<glm::vec3>()(vertex.pos) ^
+             (hash<glm::vec3>()(vertex.color) << 1)) >>
+            1) ^
+           (hash<glm::vec2>()(vertex.texCoord) << 1);
+  }
+};
+}  // namespace std
 
 struct UniformBufferObject {
   alignas(16) glm::mat4 model;
@@ -120,8 +140,6 @@ class HelloTriangleApp {
   bool _enableValidationLayers = true;
 #endif
 
-  static void framebufferResizeCallback(GLFWwindow* window, int width, int height);
-
   void initWindow();
   void initVulkan();
   void setupDebugMessenger();
@@ -168,6 +186,7 @@ class HelloTriangleApp {
   void recreateSwapChain();
   void cleanupSwapChain();
 
+  /*
   const std::vector<Vertex> _vertices = {
 
       {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},  // V1
@@ -186,6 +205,10 @@ class HelloTriangleApp {
       _indices = {
           0, 1, 2, 2, 3, 0,
           4, 5, 6, 6, 7, 4};
+  */
+
+  std::vector<Vertex>   _vertices;
+  std::vector<uint32_t> _indices;
 
   VkBuffer       _vertexBuffer;
   VkDeviceMemory _vertexBufferMemory;
@@ -241,4 +264,21 @@ class HelloTriangleApp {
   VkFormat       findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
   VkFormat       findDepthFormat();
   bool           hasStencilComponent(VkFormat format);
+
+  /*
+  Model from sketchfab: https://sketchfab.com/3d-models/drinking-fountain-barratt-gardens-fadb7924554048fdb59dcaabf6714832
+  Author: artfletch
+  License: CC Attribution
+  */
+  const std::string MODEL_PATH   = "models/drinking-fountain-barratt-gardens/DrinkingFountainBarrattGardens01.obj";
+  const std::string TEXTURE_PATH = "models/drinking-fountain-barratt-gardens/DrinkingFountainBarrattGardens_2m_8k_01_u1_v1.jpg";
+
+  void loadModel();
+
+  glm::vec3 _viewTranslation = glm::vec3(0.0f, 50.0f, 20.0f);
+  glm::mat4 updateViewMatrix();
+
+  // glfw call backs
+  static void framebufferResizeCallback(GLFWwindow* window, int width, int height);
+  static void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 };
