@@ -426,6 +426,7 @@ void HelloTriangleApp::createLogicalDevice() {
 
   VkPhysicalDeviceFeatures deviceFeatures = {};
   deviceFeatures.samplerAnisotropy        = VK_TRUE;
+  deviceFeatures.sampleRateShading        = VK_TRUE;  // enable sample shading feature for the device
 
   VkDeviceCreateInfo createInfo      = {};
   createInfo.sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -790,7 +791,8 @@ void HelloTriangleApp::createGraphicsPipeline() {
 
   VkPipelineMultisampleStateCreateInfo multisampling = {};
   multisampling.sType                                = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-  multisampling.sampleShadingEnable                  = VK_FALSE;
+  multisampling.sampleShadingEnable                  = VK_TRUE;  // enable sample shading in the pipeline
+  multisampling.minSampleShading                     = .2f;      // min fraction for sample shading; closer to one is smoother
   multisampling.rasterizationSamples                 = _msaaSamples;
 
   VkPipelineDepthStencilStateCreateInfo depthStencil = {};
