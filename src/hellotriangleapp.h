@@ -87,6 +87,11 @@ struct UniformBufferObject {
   alignas(16) glm::mat4 proj;
 };
 
+struct WindowGeometry {
+  glm::ivec2 pos;
+  glm::ivec2 size;
+};
+
 class HelloTriangleApp {
  public:
   void run();
@@ -107,9 +112,6 @@ class HelloTriangleApp {
   VkExtent2D _swapChainExtent;
 
   std::vector<VkImageView> _swapChainImageViews;
-
-  const int WIDTH  = 800;
-  const int HEIGHT = 600;
 
   const std::vector<const char*> _validationLayers = {"VK_LAYER_KHRONOS_validation"};
   const std::vector<const char*> _deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
@@ -241,9 +243,9 @@ class HelloTriangleApp {
   uint32_t       _mipLevels;
   VkImage        _textureImage;
   VkDeviceMemory _textureImageMemory;
-  void           createImage(uint32_t width, uint32_t height, uint32_t mipLevels, VkFormat format,
-                             VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties,
-                             VkImage& image, VkDeviceMemory& imageMemory);
+  void           createImage(uint32_t width, uint32_t height, uint32_t mipLevels, VkSampleCountFlagBits numSamples,
+                             VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage,
+                             VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
 
   VkCommandBuffer beginSingleTimeCommands();
   void            endSingleTimeCommands(VkCommandBuffer commandBuffer);
@@ -287,6 +289,19 @@ class HelloTriangleApp {
   // glfw call backs
   static void framebufferResizeCallback(GLFWwindow* window, int width, int height);
   static void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
+  static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
+
+  bool _fullscreen = false;
+  void toggleFullscreen();
 
   void generateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels);
+
+  VkSampleCountFlagBits _msaaSamples = VK_SAMPLE_COUNT_1_BIT;
+  VkSampleCountFlagBits getMaxUsableSampleCount();
+  VkImage               _colorImage;
+  VkDeviceMemory        _colorImageMemory;
+  VkImageView           _colorImageView;
+  void                  createColorResources();
+
+  WindowGeometry _windowGeometry = {{100, 100}, {800, 600}};
 };
